@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:showIn="navigation_view">
+
+    <group android:checkableBehavior="single">
+        <item
+            android:id="@+id/createZone"
+            android:icon="@drawable/create_zone"
+            android:title="Create Zone"
+            android:visible="false"/>
+        <item
+            android:id="@+id/createambulance"
+            android:icon="@drawable/create_zone"
+            android:title="Create Zone"
+            android:visible="false"
+            />
+        <item
+            android:id="@+id/accSetting"
+            android:title="Account setting"
+            android:icon="@drawable/account_settings_icon"/>
+        <item
+            android:id="@+id/show_maps"
+            android:icon="@drawable/maps"
+            android:title="Maps"
+            />
+        <item
+            android:id="@+id/ambulance"
+            android:icon="@drawable/fine"
+            android:title="Ambulance"
+
+            />
+        <item
+            android:id="@+id/fineOfficer"
+            android:icon="@drawable/fine"
+            android:title="Charge Fine"
+            android:visible="false"
+            />
+        <item
+            android:id="@+id/finerates"
+            android:icon="@drawable/rates"
+            android:title="Fine Rates"
+
+            />
+        <item
+            android:id="@+id/viewFine"
+            android:icon="@drawable/fine"
+            android:title="View Fine"
+            android:visible="false"
+            />
+        <item
+            android:id="@+id/logout"
+            android:icon="@drawable/logout_icon"
+            android:title="Logout"
+            />
+    </group>
+
+</menu>
