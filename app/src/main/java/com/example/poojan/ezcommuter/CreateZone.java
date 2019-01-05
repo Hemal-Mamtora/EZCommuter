@@ -31,6 +31,10 @@ import android.widget.RadioGroup;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.android.volley.Request;
+import com.android.volley.Response;
+import com.android.volley.VolleyError;
+import com.android.volley.toolbox.StringRequest;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.firebase.auth.FirebaseAuth;
@@ -40,6 +44,8 @@ import com.google.firebase.database.ServerValue;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
 import com.google.firebase.storage.UploadTask;
+
+import org.json.JSONObject;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -223,6 +229,45 @@ public class CreateZone extends AppCompatActivity /*implements View.OnClickListe
                     zoneImageURI = taskSnapshot.getDownloadUrl().toString();
                     Log.d("imageUri",zoneImageURI);
                     locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+
+                    String url = zoneImageURI;
+                    System.out.println("The url passed in addnames is   :"+url);
+                    StringRequest stringRequest = new StringRequest(Request.Method.GET, url, new Response.Listener<String>() {
+                        @Override
+                        public void onResponse(String response) {
+
+                            //(" userDetailsId: " + response);
+                            //System.out.println(" userDetailsId:  is =" + Constants.userDetailsId);
+                            //System.out.println("Response of addnames  is ="+response);
+                            try {
+                                JSONObject jsonObject = new JSONObject(response);
+                                String flag = jsonObject.getString("flag");
+                                if (flag.equals("1"))
+                                {
+                                    //("First name and last name have been added");
+                                    System.out.println("Everything has been added in the table");
+                                }
+                                else
+                                {
+                                    //("Insertion failed!");
+                                    System.out.println("Insertion failed");
+                                }
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    }, new Response.ErrorListener() {
+                        @Override
+                        public void onErrorResponse(VolleyError error) {
+                            error.fillInStackTrace();
+                        }
+                    });
+
+
+
+
+
+
                     if (!locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
                         buildAlertMessageNoGps();
 
