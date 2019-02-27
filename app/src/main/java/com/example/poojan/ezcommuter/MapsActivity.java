@@ -1,8 +1,10 @@
 package com.example.poojan.ezcommuter;
 
 import android.Manifest;
+import android.annotation.TargetApi;
 import android.app.AlertDialog;
 import android.app.Notification;
+import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
@@ -22,6 +24,8 @@ import android.support.annotation.RequiresApi;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
+import android.support.v4.app.NotificationCompat;
+import android.support.v4.app.TaskStackBuilder;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
@@ -84,6 +88,8 @@ public class MapsActivity extends AppCompatActivity
     LatLng dangerous_area[] = new LatLng[20];
     GeoQuery geoQuery;
     GeoFire geoFire;
+    String currentID = FirebaseAuth.getInstance().getCurrentUser().getUid();
+    int flag=0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -91,7 +97,7 @@ public class MapsActivity extends AppCompatActivity
         setContentView(R.layout.activity_maps);
 
         ref = FirebaseDatabase.getInstance().getReference("Zones");
-        String currentID = FirebaseAuth.getInstance().getCurrentUser().getUid();
+
         reff = FirebaseDatabase.getInstance().getReference("MyLocation");
         geoFire = new GeoFire(reff);
 
@@ -100,9 +106,7 @@ public class MapsActivity extends AppCompatActivity
 
         mapFrag = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
         mapFrag.getMapAsync(this);
-
-
-          }
+    }
 
     @Override
     public void onPause() {
@@ -142,8 +146,9 @@ public class MapsActivity extends AppCompatActivity
                     Zone zone = ds.getValue(Zone.class);
                     double latZone = Double.parseDouble(zone.getZoneLat().toString().trim());
                     double lonZone = Double.parseDouble(zone.getZoneLong().toString().trim());
-
+                    String zoneId = zone.getZoneID().toString().trim();
                     String dangerType = zone.getZoneTitle().toString().trim();
+
                     int c=0;
 
                     if(dangerType.equalsIgnoreCase("Potholes"))
@@ -155,161 +160,98 @@ public class MapsActivity extends AppCompatActivity
                     else
                         c=-16711936;
 
-
-
                     dangerous_area[i] = new LatLng(latZone, lonZone);
 
                     myMap.addCircle(new CircleOptions()
                             .center(dangerous_area[i])
-                            .radius(500)
+                            .radius(75)
                             .strokeColor(c)
                             .fillColor(0x220000ff)
                             .strokeWidth(5.0f));
 
+                    geoFire.setLocation(zoneId, new GeoLocation(latZone, lonZone), new GeoFire.CompletionListener() {
+                        @Override
+                        public void onComplete(String key, DatabaseError error) {
 
+                        }
+                    });
                     i++;
-
                 }
-
-                /*geoFire = new GeoFire(ref);
-
-                geoQuery = geoFire.queryAtLocation(new GeoLocation(dangerous_area[3].latitude,dangerous_area[3].longitude),0.5f);
+                geoQuery = geoFire.queryAtLocation(new GeoLocation(latti,longi),0.075);
                 Log.d("Before_geofire", geoQuery.toString());
-
 
                 geoQuery.addGeoQueryEventListener(new GeoQueryEventListener() {
 
 
-                    @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN)
-                    @Override
                     public void onKeyEntered(String key, GeoLocation location) {
-                        Log.d("INSIDE1", "flag");
-
-                        sendNotification("DangerZone",String.format("%s Entered into the ZoneArea",key));
-
-                        Log.d("INSIDE2", "flag");
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
+                            sendNotification("DangerZone -"+key,String.format("%s Entered into the ZoneArea",key));
+                        }
                     }
 
-                    @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN)
-                    @Override
+
                     public void onKeyExited(String key) {
-                        sendNotification("DangerZone",String.format("%s Exited from the ZoneArea",key));
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                            sendNotification("DangerZone",String.format("%s Exited from the ZoneArea",key));
+                        }
 
                     }
 
-                    @Override
+
                     public void onKeyMoved(String key, GeoLocation location) {
                         Log.d("MOVE",String.format("%s Moving within the dangerous area[%f/%f]",key,location.latitude,location.longitude));
                     }
 
-                    @Override
                     public void onGeoQueryReady() {
-
                     }
 
-                    @Override
                     public void onGeoQueryError(DatabaseError error) {
                         Log.e("Error","check:"+error);
-
                     }
                 });
 
-                Log.d("After_geofire", geoQuery.toString());*/
-
-
+                Log.d("After_geofire", geoQuery.toString());
             }
-
-
-
             @Override
             public void onCancelled(DatabaseError databaseError) {
 
             }
         });
-
-
-
-
-        //Creating Dangerous Area
-        /*LatLng dangerous_area1 = new LatLng(19.0729216,72.9008471);
-        myMap.addCircle(new CircleOptions()
-                .center(dangerous_area1)
-                .radius(500)
-                .strokeColor(Color.BLUE)
-                .fillColor(0x220000ff)
-                .strokeWidth(5.0f));
-
-        //Creating Second Dangerous Area
-        LatLng dangerous_area2 = new LatLng(19.2386637,72.8580719);
-        myMap.addCircle(new CircleOptions()
-                .center(dangerous_area2)
-                .radius(500)
-                .strokeColor(Color.RED)
-                .fillColor(0x220000ff)
-                .strokeWidth(5.0f)); */
-
-        //Add GeoQuery Here
-
-        GeoQuery geoQuery = geoFire.queryAtLocation(new GeoLocation(19.073542313881514, 72.89969501162396),0.5f);
-        geoQuery.addGeoQueryEventListener(new GeoQueryEventListener() {
-
-
-            @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN)
-            @Override
-            public void onKeyEntered(String key, GeoLocation location) {
-                sendNotification("DangerZone",String.format("%s Entered into the ZoneArea",key));
-                Log.d("INSIDE", "flag");
-            }
-
-            @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN)
-            @Override
-            public void onKeyExited(String key) {
-                sendNotification("DangerZone",String.format("%s Exited from the ZoneArea",key));
-
-            }
-
-            @Override
-            public void onKeyMoved(String key, GeoLocation location) {
-                Log.d("MOVE",String.format("%s Moving within the dangerous area[%f/%f]",key,location.latitude,location.longitude));
-            }
-
-            @Override
-            public void onGeoQueryReady() {
-
-            }
-
-            @Override
-            public void onGeoQueryError(DatabaseError error) {
-                Log.e("Error","check:"+error);
-
-            }
-        });
-
     }
 
+    @TargetApi(Build.VERSION_CODES.O)
     @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN)
     private void sendNotification(String title, String content) {
 
-        Toast.makeText(this, "Hello from the other side", Toast.LENGTH_LONG).show();
-        Log.d("inside_sendNotification", "flag");
-        Notification.Builder builder = new Notification.Builder(this)
-                .setSmallIcon(R.mipmap.ic_launcher_round)
+        //Toast.makeText(this, "Hello from the other side", Toast.LENGTH_LONG).show();
+        NotificationManager notificationManager = (NotificationManager) this.getSystemService(Context.NOTIFICATION_SERVICE);
+
+        int notificationId = 1;
+        String channelId = "channel-01";
+        String channelName = "Channel Name";
+        int importance = NotificationManager.IMPORTANCE_HIGH;
+
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            NotificationChannel mChannel = new NotificationChannel(
+                    channelId, channelName, importance);
+            notificationManager.createNotificationChannel(mChannel);
+        }
+
+        NotificationCompat.Builder mBuilder = new NotificationCompat.Builder(this, channelId)
+                .setSmallIcon(R.mipmap.ic_launcher)
                 .setContentTitle(title)
                 .setContentText(content);
-        NotificationManager manager =  (NotificationManager) this.getSystemService(Context.NOTIFICATION_SERVICE);
+
+        TaskStackBuilder stackBuilder = TaskStackBuilder.create(this);
         Intent intent = new Intent(this , MapsActivity.class);
-        PendingIntent pendingIntent = PendingIntent.getActivity(this , 0 ,intent , PendingIntent.FLAG_IMMUTABLE);
-        builder.setContentIntent(pendingIntent);
-        Notification not = builder.build();
-        not.flags |= Notification.FLAG_AUTO_CANCEL;
-        not.defaults |= Notification.DEFAULT_SOUND;
+        stackBuilder.addNextIntent(intent);
+        PendingIntent resultPendingIntent = stackBuilder.getPendingIntent(
+                0,
+                PendingIntent.FLAG_UPDATE_CURRENT
+        );
+        mBuilder.setContentIntent(resultPendingIntent);
 
-        try {
-            manager.notify(new Random().nextInt(), not);
-        }catch (Exception e){
-
-            Toast.makeText(getApplicationContext(),e.toString(), Toast.LENGTH_SHORT).show();
-        }
+        notificationManager.notify(notificationId, mBuilder.build());
     }
 
 
@@ -376,7 +318,7 @@ public class MapsActivity extends AppCompatActivity
 
             Log.d("MyTag",ss+ ", "+sss);
 
-            geoFire.setLocation("You", new GeoLocation(latti, longi), new GeoFire.CompletionListener() {
+            /*geoFire.setLocation(currentID, new GeoLocation(latti, longi), new GeoFire.CompletionListener() {
                 @Override
                 public void onComplete(String key, DatabaseError error) {
                     //ADD Marker
@@ -390,7 +332,7 @@ public class MapsActivity extends AppCompatActivity
                     //Move The Camera Position
                     myMap.animateCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(latti,longi),16.0f));
                 }
-            });
+            });*/
 
 
             LatLng latLng = new LatLng(latti, longi);
@@ -470,9 +412,6 @@ public class MapsActivity extends AppCompatActivity
 
                 return;
             }
-
-            // other 'case' lines to check for other
-            // permissions this app might request
         }
     }
 }
