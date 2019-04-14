@@ -11,6 +11,7 @@ import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
@@ -44,6 +45,18 @@ import com.google.firebase.database.ServerValue;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
 import com.google.firebase.storage.UploadTask;
+import com.ibm.watson.developer_cloud.android.library.camera.CameraHelper;
+import com.ibm.watson.developer_cloud.service.exception.NotFoundException;
+import com.ibm.watson.developer_cloud.service.exception.RequestTooLargeException;
+import com.ibm.watson.developer_cloud.service.exception.ServiceResponseException;
+import com.ibm.watson.developer_cloud.service.security.IamOptions;
+import com.ibm.watson.developer_cloud.visual_recognition.v3.VisualRecognition;
+import com.ibm.watson.developer_cloud.visual_recognition.v3.model.ClassifiedImages;
+//import com.ibm.watson.developer_cloud.visual_recognition.v3.model.ClassifyImagesOptions;
+import com.ibm.watson.developer_cloud.visual_recognition.v3.model.ClassifyOptions;
+//import com.ibm.watson.developer_cloud.visual_recognition.v3.model.ImageClassification;
+//import com.ibm.watson.developer_cloud.visual_recognition.v3.model.VisualClassification;
+//import com.ibm.watson.developer_cloud.visual_recognition.v3.model.VisualClassifier;
 
 import org.json.JSONObject;
 
@@ -51,7 +64,13 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URL;
 import java.text.SimpleDateFormat;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.Date;
 import java.util.Random;
 import java.util.UUID;
@@ -67,6 +86,19 @@ public class CreateZone extends AppCompatActivity /*implements View.OnClickListe
     private String deviceIdentifier;
     private FirebaseAuth auth;
     private ProgressDialog mProgress;
+
+    //////////////////////////////////////////////////////////////////
+    Bitmap imageBitmap;
+    private VisualRecognition vrClient;
+    private CameraHelper helper;
+    int rresultCode;
+    ////////////////////////////////////////////////////////////////////
+
+    public TextView getCapture() {
+        return capture;
+    }
+
+
 
     RadioGroup rg;
     RadioButton rb;
@@ -93,42 +125,17 @@ public class CreateZone extends AppCompatActivity /*implements View.OnClickListe
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_create_zone);
 
-        rg = (RadioGroup)findViewById(R.id.RGDonatecategory);
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        //vrClient = new VisualRecognition(VisualRecognition.VERSION_DATE_2016_05_20, getString(R.string.api_key));
+
+        helper = new CameraHelper(this);
+        //////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        //helper.dispatchTakePictureIntent();
+
+                rg = (RadioGroup) findViewById(R.id.RGDonatecategory);
 
         ActivityCompat.requestPermissions(this, new String[]{android.Manifest.permission.ACCESS_FINE_LOCATION}, REQUEST_LOCATION);
-
-        //Hitting API
-
-        //Toast.makeText(getApplicationContext(), "Sarah is Dumb!", Toast.LENGTH_SHORT).show();
-
-        String url = "http://172.16.2.4:8000/commuters_app/get_preds";
-       /* AsyncHttpClient client = new AsyncHttpClient();
-        File myFile = new File("C:/Users/Chinmay Rane/Desktop/dog.jpg");
-        RequestParams params = new RequestParams();
-        params.setForceMultipartEntityContentType(true);
-        //params.put("q", "Sarah is dumb!");
-        try {
-            params.put("dog_image", myFile);
-        } catch(FileNotFoundException e) {}
-        //params.put("rsz", "8");
-
-        client.post(url, params, new JsonHttpResponseHandler() {
-            @Override
-            public void onSuccess(int statusCode, Header[] headers, JSONObject response) {
-                // Root JSON in response is an dictionary i.e { "data : [ ... ] }
-                // Handle resulting parsed JSON response here
-
-                Toast.makeText(getApplicationContext(), "Connection Successful!", Toast.LENGTH_SHORT).show();
-
-            }
-
-            @Override
-            public void onFailure(int statusCode, Header[] headers, String res, Throwable t) {
-                // called when response HTTP status is "4XX" (eg. 401, 403, 404)
-
-                Toast.makeText(getApplicationContext(), "Connection Failed!", Toast.LENGTH_SHORT).show();
-            }
-        });*/
 
         databaseReference = FirebaseDatabase.getInstance().getReference("Zones");
         //ztitle = (EditText) findViewById(R.id.editTextTitle);
@@ -157,15 +164,27 @@ public class CreateZone extends AppCompatActivity /*implements View.OnClickListe
     }
 
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+
         if (requestCode == CAMERA_REQUEST_CODE && resultCode == RESULT_OK) {
 
             Bundle extras = data.getExtras();
-            Bitmap imageBitmap = (Bitmap) extras.get("data");
+            imageBitmap = (Bitmap) extras.get("data");
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             imageBitmap.compress(Bitmap.CompressFormat.JPEG, 100, baos);
             dataBAOS = baos.toByteArray();
-            image.setImageBitmap(imageBitmap);
-        }
+            rresultCode = resultCode;
+            //image.setImageBitmap(imageBitmap);
+
+            super.onActivityResult(requestCode, resultCode, data);
+
+            //if(requestCode == CameraHelper.REQUEST_IMAGE_CAPTURE) {
+
+                Log.d("INSIDE IF ","FLAG 1");
+                // More code here
+                final Bitmap photo = imageBitmap;//helper.getBitmap(resultCode);
+                //final File photoFile = helper.getFile(resultCode);
+                image.setImageBitmap(photo);
+            }
     }
 
     //save captured picture on cloud storage
@@ -182,7 +201,6 @@ public class CreateZone extends AppCompatActivity /*implements View.OnClickListe
             final String ZoneTitle = st2;
             final String ZoneData = zdesc.getText().toString().trim();
             final String ZoneSolution = zsol.getText().toString().trim();
-            //String ZoneStatus = ztitle.getText().toString().trim();
             final String ZoneImage = zoneImageURI;
 
 
@@ -195,19 +213,12 @@ public class CreateZone extends AppCompatActivity /*implements View.OnClickListe
                 Toast.makeText(CreateZone.this, "Please Enter The Zone Solution", Toast.LENGTH_SHORT).show();
                 return;
             }
-            /*if (TextUtils.isEmpty(ZoneImage)) {
-                Toast.makeText(CreateZone.this, "Please Capture The Image First", Toast.LENGTH_SHORT).show();
-                return;
-            }*/
+
             if(dataBAOS.equals("")){
                 Toast.makeText(CreateZone.this, "Please Capture The Image First", Toast.LENGTH_SHORT).show();
                 return;
             }
 
-        /*if (TextUtils.isEmpty(ZoneStatus)) {
-            Toast.makeText(this, "Please Enter The Zone Status", Toast.LENGTH_SHORT).show();
-            return;
-        }*/
 
             Log.d("bataBAOS0", String.valueOf(dataBAOS[0]));
             mProgress.setMessage("Uploading your Status...");
@@ -228,6 +239,7 @@ public class CreateZone extends AppCompatActivity /*implements View.OnClickListe
                     mProgress.dismiss();
                     zoneImageURI = taskSnapshot.getDownloadUrl().toString();
                     Log.d("imageUri",zoneImageURI);
+
                     locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
 
                     String url = zoneImageURI;
@@ -264,10 +276,6 @@ public class CreateZone extends AppCompatActivity /*implements View.OnClickListe
                     });
 
 
-
-
-
-
                     if (!locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
                         buildAlertMessageNoGps();
 
@@ -280,6 +288,32 @@ public class CreateZone extends AppCompatActivity /*implements View.OnClickListe
                                 ZoneLat, ZoneLong,0,0 ,0, zoneImageURI);
                         databaseReference.child(ZoneKey).setValue(zn);
                         Toast.makeText(CreateZone.this, " All The Details Added Successfully", Toast.LENGTH_SHORT).show();
+
+                        zoneImageURI = "https://watson-developer-cloud.github.io/doc-tutorial-downloads/visual-recognition/fruitbowl.jpg";
+                        AsyncTask.execute(new Runnable() {
+                                              @Override
+                                              public void run() {
+
+                                                  IamOptions options = new IamOptions.Builder()
+                                                          .apiKey(getString(R.string.api_key))
+                                                          .build();
+
+
+                                                  VisualRecognition visualRecognition = new VisualRecognition("2018-03-19", options);
+                                                  VisualRecognition service = new VisualRecognition("2018-03-19", options);
+
+                                                  ClassifyOptions classifyOptions = new ClassifyOptions.Builder()
+                                                          .url(zoneImageURI)
+                                                          .threshold((float) 0.6)
+                                                          .classifierIds(Arrays.asList("EZCommuterVisualRecognition_411166678"))
+                                                          .build();
+
+                                                  ClassifiedImages result = service.classify(classifyOptions).execute();
+                                                  Log.d("IBM", result.toString());
+
+                                              }
+                                          });
+
                         Intent intent = new Intent(CreateZone.this, Home.class);
                         startActivity(intent);
                         finish();

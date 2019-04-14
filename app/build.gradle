@@ -55,6 +55,12 @@ dependencies {
     implementation 'com.loopj.android:android-async-http:1.4.9'
     implementation 'com.android.volley:volley:1.1.1'
 
+    implementation 'com.ibm.watson.developer_cloud:visual-recognition:3.9.1'
+    implementation 'com.ibm.watson.developer_cloud:android-sdk:0.2.3'
+    implementation 'com.squareup.picasso:picasso:2.5.2'
+
+    compile 'com.ibm.watson.developer_cloud:java-sdk:6.9.0'
+
 
 }
 
